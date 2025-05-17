@@ -1,0 +1,6 @@
+@AIChatbot.Application_HostAddress = http://localhost:5200
+
+GET {{AIChatbot.Application_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

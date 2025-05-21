@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using AIChatbot.Application.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace AIChatbot.Application
 {

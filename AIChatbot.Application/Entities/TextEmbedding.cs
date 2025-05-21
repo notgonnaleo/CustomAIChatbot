@@ -1,4 +1,4 @@
-namespace AIChatbot.Application
+namespace AIChatbot.Application.Entities
 {
     public class TextEmbedding
     {

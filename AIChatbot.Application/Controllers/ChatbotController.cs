@@ -1,3 +1,4 @@
+using AIChatbot.Application.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
@@ -10,15 +11,17 @@ namespace AIChatbot.Application.Controllers
     {
         private readonly HttpClient _client;
         private readonly AppDbContext _context;
-        public ChatbotController(HttpClient client, AppDbContext context)
+        private readonly ILogger<ChatbotController> _logger;
+        public ChatbotController(HttpClient client, AppDbContext context, ILogger<ChatbotController> logger)
         {
             _client = client;
             _context = context;
+            _logger = logger;
         }
 
         [HttpPost]
         [Route("Embedding")]
-        public async Task<IActionResult> Add(string message)
+        public async Task<IActionResult> Add([FromBody] string message)
         {
             try
             {
@@ -72,7 +75,7 @@ namespace AIChatbot.Application.Controllers
                 var embeddingResponse = await response.Content.ReadFromJsonAsync<OllamaEmbeddingResponse>();
 
                 if (embeddingResponse == null || embeddingResponse.Embedding == null)
-                    throw new Exception("Erro ao gerar embedding.");
+                    throw new Exception("Embedding generation failed.");
 
                 var questionEmbedding = embeddingResponse.Embedding;
 
@@ -86,8 +89,8 @@ namespace AIChatbot.Application.Controllers
                         Score = CosineSimilarity(questionEmbedding, ByteArrayToFloatArray(e.Embedding)) // Fix this stupid warning
                     })
                     .OrderByDescending(x => x.Score)
-                    .Take(3)
                     .ToList();
+                _logger.LogTrace($"Closest embeddings to question: {topMatches}");
 
                 if (topMatches.Count == 0)
                     return NotFound("I don't have enough context to answer that, Could you try something different?");
@@ -96,7 +99,24 @@ namespace AIChatbot.Application.Controllers
                 var context = string.Join("\n---\n", topMatches.Select(x => x.TextEmbedding.Message));
 
                 // Create prompt
-                var prompt = $"Context:\n{context}\n\n Question: {question}\n";
+                var prompt = 
+                @$"
+                    You're an expert assistant with a senior software engineering level and problem solver, doing whatever workaround necessary to accomplish your goals.
+                    
+                    If possible use all you can from the 'Context' topic as a base for your answer, and if necessary, Use online resources
+                    to complete the answer;
+
+                    You must try as hard as you can to answer the question, but if you don't know the answer then say that you don't know and
+                    if possible, suggest a way to find the answer;
+
+                    Answer using the same language which question was written with;
+                    
+                    Context:
+                    {context}
+
+                    Question:
+                    {question}
+                ";
 
                 // Send to AI Agent
                 var chatRequest = new OllamaRequest
@@ -104,6 +124,9 @@ namespace AIChatbot.Application.Controllers
                     Model = "llama3",
                     Prompt = prompt
                 };
+                _logger.LogTrace("Sending request to AI agent...");
+                _logger.LogTrace(JsonSerializer.Serialize(chatRequest));
+
                 var chatHttpRequest = new HttpRequestMessage(HttpMethod.Post, "http://localhost:11434/api/generate")
                 {
                     Content = new StringContent(JsonSerializer.Serialize(chatRequest), System.Text.Encoding.UTF8, "application/json")
@@ -139,7 +162,6 @@ namespace AIChatbot.Application.Controllers
                 return BadRequest(new { Error = ex.Message });
             }
         }
-
         private static float CosineSimilarity(float[] a, float[] b)
         {
             float dot = 0f, magA = 0f, magB = 0f;

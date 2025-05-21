@@ -12,7 +12,10 @@ builder.Services.AddSwaggerGen();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(connectionString));
-builder.Services.AddScoped<HttpClient>();
+builder.Services.AddHttpClient("Ollama", client => 
+{
+    client.BaseAddress = new Uri("http://localhost:11434/");
+});
 
 var app = builder.Build();
 

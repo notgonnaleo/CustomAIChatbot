@@ -12,9 +12,9 @@ namespace AIChatbot.Application.Controllers
         private readonly HttpClient _client;
         private readonly AppDbContext _context;
         private readonly ILogger<ChatbotController> _logger;
-        public ChatbotController(HttpClient client, AppDbContext context, ILogger<ChatbotController> logger)
+        public ChatbotController(IHttpClientFactory httpClientFactory, AppDbContext context, ILogger<ChatbotController> logger)
         {
-            _client = client;
+            _client = httpClientFactory.CreateClient("Ollama");
             _context = context;
             _logger = logger;
         }
@@ -25,7 +25,7 @@ namespace AIChatbot.Application.Controllers
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost:11434/api/embeddings");
+                var request = new HttpRequestMessage(HttpMethod.Post, "api/embeddings");
                 var payload = new OllamaRequest()
                 {
                     Model = "nomic-embed-text",
@@ -64,7 +64,7 @@ namespace AIChatbot.Application.Controllers
             try
             {
                 // Create embedding for the question
-                var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost:11434/api/embeddings");
+                var request = new HttpRequestMessage(HttpMethod.Post, "api/embeddings");
                 request.Content = new StringContent(JsonSerializer.Serialize(new OllamaRequest() 
                 { 
                     Model = "nomic-embed-text",
@@ -127,7 +127,7 @@ namespace AIChatbot.Application.Controllers
                 _logger.LogTrace("Sending request to AI agent...");
                 _logger.LogTrace(JsonSerializer.Serialize(chatRequest));
 
-                var chatHttpRequest = new HttpRequestMessage(HttpMethod.Post, "http://localhost:11434/api/generate")
+                var chatHttpRequest = new HttpRequestMessage(HttpMethod.Post, "api/generate")
                 {
                     Content = new StringContent(JsonSerializer.Serialize(chatRequest), System.Text.Encoding.UTF8, "application/json")
                 };
